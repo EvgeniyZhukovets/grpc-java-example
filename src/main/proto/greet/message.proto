@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package message;
+option java_package = "ru.itis.proto";
+option java_multiple_files = true;
+
+message Message {
+    string text = 1;
+};
+
+message MessageManyTimesRequest {
+    Message message = 1;
+};
+
+message MessageManyTimesResponse {
+    string message = 1;
+};
+
+
+message LongMessageRequest {
+    Message message = 1;
+};
+
+message LongMessageResponse {
+    string message = 1;
+};
+
+
+message MessageEveryOneRequest {
+    Message message = 1;
+};
+
+message MessageEveryOneResponse {
+    string message = 1;
+};
+
+service MessageService {
+    // Server streaming
+    rpc MessageManyTimes(MessageManyTimesRequest) returns (stream MessageManyTimesResponse){};
+
+    // Client Streaming
+    rpc LongMessage (stream LongMessageRequest) returns (LongMessageResponse){};
+
+    // BiDi Streaming
+    rpc MessageEveryOne(stream MessageEveryOneRequest) returns (stream MessageEveryOneResponse) {};
+};
+
