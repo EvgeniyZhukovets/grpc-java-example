@@ -14,7 +14,6 @@ public class gRPCServer {
 
         server.start();
 
-
         Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
         server.awaitTermination();
     }

@@ -26,7 +26,6 @@ public class MessageServiceImpl extends MessageServiceGrpc.MessageServiceImplBas
 
     @Override
     public StreamObserver<LongMessageRequest> longMessage(final StreamObserver<LongMessageResponse> responseObserver) {
-
         return new StreamObserver<LongMessageRequest>() {
             final StringBuilder response = new StringBuilder();
 
