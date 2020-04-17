@@ -10,7 +10,7 @@ import java.util.concurrent.CountDownLatch;
 
 public class Client {
 
-    private final String[] names = {"Evgeniy", "Bulat", "Roman"};
+    private final Integer[] numbers = {1, 2, 3, 8, 9, 6, 7, 5, 4};
     private final CountDownLatch latch = new CountDownLatch(1);
 
     public static void main(final String[] args) throws InterruptedException {
@@ -23,22 +23,43 @@ public class Client {
                 .usePlaintext()
                 .build();
 
-        doBiDiCall(channel);
+        doUnaryCall(channel);
         doClientCall(channel);
+        doBiDiCall(channel);
         doServerCall(channel);
 
         channel.shutdown();
+    }
+
+    private void doUnaryCall(final ManagedChannel channel) throws InterruptedException {
+        System.out.println("Unary call");
+
+        final MessageServiceGrpc.MessageServiceBlockingStub greetClient = MessageServiceGrpc.newBlockingStub(channel);
+
+        final int number = 36;
+        System.out.println("Request: " + number);
+        final UnaryMessage unaryMessage = UnaryMessage.newBuilder().setNumber(number).build();
+
+        final MessageRequest greetRequest = MessageRequest.newBuilder()
+                .setMessage(unaryMessage)
+                .build();
+
+        final MessageResponse response = greetClient.unaryMessage(greetRequest);
+        System.out.println("Response: " + response.getNumber());
+
+        System.out.println("Unary call finished");
+        Thread.sleep(1000L);
     }
 
     private void doBiDiCall(final ManagedChannel channel) throws InterruptedException {
         System.out.println("BiDi call");
         final MessageServiceGrpc.MessageServiceStub asyncClient = MessageServiceGrpc.newStub(channel);
 
-        final StreamObserver<MessageEveryOneRequest> requestObserver = asyncClient.messageEveryOne(
+        final StreamObserver<MessageEveryOneRequest> requestObserver = asyncClient.biDiCallMessage(
                 new StreamObserver<MessageEveryOneResponse>() {
                     @Override
                     public void onNext(final MessageEveryOneResponse value) {
-                        System.out.println("Response: " + value.getMessage());
+                        System.out.println("New maximum: " + value.getMessage());
                     }
 
                     @Override
@@ -54,11 +75,11 @@ public class Client {
                 }
         );
 
-        Arrays.asList(names).forEach(
+        Arrays.asList(numbers).forEach(
                 name -> {
                     System.out.println("Request: " + name);
                     requestObserver.onNext(MessageEveryOneRequest.newBuilder()
-                            .setMessage(Message.newBuilder().setText(name).build())
+                            .setMessage(BiDiCallMessage.newBuilder().setNumber(name).build())
                             .build());
                 }
         );
@@ -71,10 +92,10 @@ public class Client {
         System.out.println("Client call");
         final MessageServiceGrpc.MessageServiceStub asyncClient = MessageServiceGrpc.newStub(channel);
 
-        final StreamObserver<LongMessageRequest> requestObserver = asyncClient.longMessage(new StreamObserver<LongMessageResponse>() {
+        final StreamObserver<LongMessageRequest> requestObserver = asyncClient.clientCallMessage(new StreamObserver<LongMessageResponse>() {
             @Override
             public void onNext(final LongMessageResponse value) {
-                System.out.println("Response: " + value.getMessage());
+                System.out.println("Standard deviation: " + value.getMessage());
             }
 
             @Override
@@ -88,11 +109,11 @@ public class Client {
             }
         });
 
-        Arrays.asList(names).forEach(
-                name -> {
-                    System.out.println("Request: " + name);
+        Arrays.asList(numbers).forEach(
+                number -> {
+                    System.out.println("Request: " + number);
                     requestObserver.onNext(LongMessageRequest.newBuilder()
-                            .setMessage(Message.newBuilder().setText(name).build())
+                            .setMessage(ClientCallMessage.newBuilder().setNumber(number).build())
                             .build());
                 }
         );
@@ -105,14 +126,15 @@ public class Client {
         System.out.println("Server call");
         final MessageServiceGrpc.MessageServiceBlockingStub client = MessageServiceGrpc.newBlockingStub(channel);
 
-
+        final int number = 36;
+        System.out.println("Request: " + number);
         final MessageManyTimesRequest request = MessageManyTimesRequest.newBuilder()
-                .setMessage(Message.newBuilder().setText(names[0]))
+                .setMessage(ServerCallMessage.newBuilder().setNumber(number).build())
                 .build();
 
-        client.messageManyTimes(request)
+        client.serverCallMessage(request)
                 .forEachRemaining(response -> {
-                    System.out.println(response.getMessage());
+                    System.out.println("Factor: " + response.getMessage());
                 });
         Thread.sleep(1000L);
     }

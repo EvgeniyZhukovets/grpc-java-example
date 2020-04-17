@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package message;
+option java_package = "ru.itis.proto";
+option java_multiple_files = true;
+
+message UnaryMessage {
+    int32 number = 1;
+};
+
+message ClientCallMessage {
+    int32 number = 1;
+};
+
+message BiDiCallMessage {
+    int32 number = 1;
+};
+
+message ServerCallMessage {
+    int32 number = 1;
+};
+
+message MessageRequest{
+    UnaryMessage message = 1;
+};
+
+message MessageResponse {
+    double number = 1;
+};
+
+message MessageManyTimesRequest {
+    ServerCallMessage message = 1;
+};
+
+message MessageManyTimesResponse {
+    int32 message = 1;
+};
+
+
+message LongMessageRequest {
+    ClientCallMessage message = 1;
+};
+
+message LongMessageResponse {
+    int32 message = 1;
+};
+
+
+message MessageEveryOneRequest {
+    BiDiCallMessage message = 1;
+};
+
+message MessageEveryOneResponse {
+    int32 message = 1;
+};
+
+service MessageService {
+    // Unary
+    rpc UnaryMessage(MessageRequest) returns (MessageResponse){};
+
+    // Server streaming
+    rpc ServerCallMessage(MessageManyTimesRequest) returns (stream MessageManyTimesResponse){};
+
+    // Client Streaming
+    rpc ClientCallMessage(stream LongMessageRequest) returns (LongMessageResponse){};
+
+    // BiDi Streaming
+    rpc BiDiCallMessage(stream MessageEveryOneRequest) returns (stream MessageEveryOneResponse) {};
+};
+

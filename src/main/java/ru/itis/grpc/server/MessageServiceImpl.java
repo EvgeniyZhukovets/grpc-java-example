@@ -3,17 +3,40 @@ package ru.itis.grpc.server;
 import ru.itis.proto.*;
 import io.grpc.stub.StreamObserver;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Vector;
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class MessageServiceImpl extends MessageServiceGrpc.MessageServiceImplBase {
 
     @Override
-    public void messageManyTimes(final MessageManyTimesRequest request, final StreamObserver<MessageManyTimesResponse> responseObserver) {
-        final String name = request.getMessage().getText();
+    public void unaryMessage(final MessageRequest request, final StreamObserver<MessageResponse> responseObserver) {
+        final UnaryMessage message = request.getMessage();
+        final int number = message.getNumber();
+
+
+        final MessageResponse response = MessageResponse.newBuilder()
+                .setNumber(Math.sqrt(number))
+                .build();
+
+        responseObserver.onNext(response);
+
+        responseObserver.onCompleted();
+    }
+
+
+    @Override
+    public void serverCallMessage(final MessageManyTimesRequest request, final StreamObserver<MessageManyTimesResponse> responseObserver) {
+        final List<Integer> factors = primeFactors(request.getMessage().getNumber());
+        System.out.println(factors);
 
         try {
-            for (int i = 0; i < name.length(); i++) {
+            for (Integer factor : factors) {
                 Thread.sleep(1000L);
                 final MessageManyTimesResponse response = MessageManyTimesResponse.newBuilder()
-                        .setMessage(String.valueOf(name.charAt(i)))
+                        .setMessage(factor)
                         .build();
                 responseObserver.onNext(response);
             }
@@ -25,13 +48,15 @@ public class MessageServiceImpl extends MessageServiceGrpc.MessageServiceImplBas
     }
 
     @Override
-    public StreamObserver<LongMessageRequest> longMessage(final StreamObserver<LongMessageResponse> responseObserver) {
+    public StreamObserver<LongMessageRequest> clientCallMessage(final StreamObserver<LongMessageResponse> responseObserver) {
         return new StreamObserver<LongMessageRequest>() {
-            final StringBuilder response = new StringBuilder();
+            final AtomicInteger response = new AtomicInteger();
+            final AtomicInteger count = new AtomicInteger();
 
             @Override
             public void onNext(final LongMessageRequest value) {
-                response.append("Hello ").append(value.getMessage().getText());
+                response.getAndAdd(value.getMessage().getNumber());
+                count.getAndIncrement();
             }
 
             @Override
@@ -42,7 +67,7 @@ public class MessageServiceImpl extends MessageServiceGrpc.MessageServiceImplBas
             public void onCompleted() {
                 responseObserver.onNext(
                         LongMessageResponse.newBuilder()
-                                .setMessage(response.toString())
+                                .setMessage(response.intValue() / count.intValue())
                                 .build()
                 );
                 responseObserver.onCompleted();
@@ -51,13 +76,15 @@ public class MessageServiceImpl extends MessageServiceGrpc.MessageServiceImplBas
     }
 
     @Override
-    public StreamObserver<MessageEveryOneRequest> messageEveryOne(final StreamObserver<MessageEveryOneResponse> responseObserver) {
+    public StreamObserver<MessageEveryOneRequest> biDiCallMessage(final StreamObserver<MessageEveryOneResponse> responseObserver) {
         return new StreamObserver<MessageEveryOneRequest>() {
+            final Vector<Integer> numbers = new Vector<>();
+
             @Override
             public void onNext(final MessageEveryOneRequest value) {
-                final String result = "Hello " + value.getMessage().getText();
+                numbers.add(value.getMessage().getNumber());
                 final MessageEveryOneResponse greetEveryOneResponse = MessageEveryOneResponse.newBuilder()
-                        .setMessage(result).build();
+                        .setMessage(Collections.max(numbers)).build();
                 responseObserver.onNext(greetEveryOneResponse);
             }
 
@@ -70,5 +97,16 @@ public class MessageServiceImpl extends MessageServiceGrpc.MessageServiceImplBas
                 responseObserver.onCompleted();
             }
         };
+    }
+
+    public List<Integer> primeFactors(int num) {
+        final List<Integer> factors = new ArrayList<>();
+        factors.add(1);
+        for (int a = 2; num > 1; )
+            if (num % a == 0) {
+                factors.add(a);
+                num /= a;
+            } else a++;
+        return factors;
     }
 }
